@@ -6,10 +6,12 @@ import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 
 import javax.swing.JFileChooser;
@@ -20,14 +22,40 @@ import javax.swing.JMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
+/*
+스트림 
+
+방향)
+1. 입력(Input)
+2. 출력(Output)
+
+용도)
+1. 바이트 기반(byte 기반으로 읽고, 쓰기) FileInputStream..
+   이미지, 문서(만일 읽어들인 바이트가 영문인 경우 문자변환 O
+     한글인 경우 표현불가...)
+
+2. 문자기반 스트림 (~~Reader, ~~Writer)
+   문자를 대상으로 읽고 쓸때 
+   ex) 편집기, 채팅
+
+3. 버퍼기반 스트림 (BufferedReader~~, BufferedWriter~~)
+ */
 public class Editor extends JFrame implements ActionListener{
 
 	JMenuBar bar;
 	JMenu[] menu;
 	JMenuItem[] item;
+	JMenuItem[] fontItem;//폰트 설정 아이템
 	JTextArea area;
 	JScrollPane scroll;
 	JFileChooser chooser;
+	
+	File file;//현재 열어놓은 파일
+	
+	//열어놓은 파일의 내용을 수시로 저장할 스트림
+	
+	FileWriter writer;//문자기반 출력스트림
+	//BufferedWriter buffw;//버퍼를 지원하는 문자 기반 출력 스트림
 	
 	public Editor() {
 		bar = new JMenuBar();
@@ -61,6 +89,17 @@ public class Editor extends JFrame implements ActionListener{
 			item[i].addActionListener(this);
 		}
 		
+		//폰트설정 아이템 생성
+		fontItem = new JMenuItem[10];
+		int n=10;
+		for(int i=0; i<fontItem.length;i++) {
+			
+			fontItem[i] = new JMenuItem(Integer.toString(n));
+			n+=2;
+			menu[2].add(fontItem[i]);
+			fontItem[i].addActionListener(this);
+		}
+		
 		//속성지정
 		area.setBackground(Color.black);
 		area.setForeground(Color.yellow);
@@ -74,11 +113,11 @@ public class Editor extends JFrame implements ActionListener{
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		setLocationRelativeTo(null);//margin auto
 		
-		setFont();
+		setFont(20);
 	}
 	
-	public void setFont() {
-		Font font=new Font("돋움체", Font.PLAIN,16);
+	public void setFont(int point) {
+		Font font=new Font("돋움체", Font.PLAIN,point);
 		
 		area.setFont(font);
 	}
@@ -90,7 +129,7 @@ public class Editor extends JFrame implements ActionListener{
 		
 		int result=chooser.showOpenDialog(this);
 		
-		//스트림은 기복적으로 1byte씩 처리되므로 영문의 이외의 문자를 해설할 수 없다.(2byte로 표현되는 문자-영문 제외 전세계 문자)
+		//스트림은 기본적으로 1byte씩 처리되므로 영문의 이외의 문자를 해설할 수 없다.(2byte로 표현되는 문자-영문 제외 전세계 문자)
 		FileInputStream fis=null;
 		FileReader reader;
 		
@@ -172,11 +211,11 @@ public class Editor extends JFrame implements ActionListener{
 	public void openFileByBuffer() {
 		int result =chooser.showOpenDialog(this);
 		
-		FileReader reader=null;
+		FileReader reader=null;	
 		BufferedReader buffr=null;
 		
 		if(result==JFileChooser.APPROVE_OPTION) {
-			File file =chooser.getSelectedFile();
+			file =chooser.getSelectedFile();
 			try {
 				reader = new FileReader(file);
 				buffr = new BufferedReader(reader);
@@ -211,13 +250,44 @@ public class Editor extends JFrame implements ActionListener{
 		}
 	}
 	
+	//현재 열어놓은 편집기의 내용을, 열어놓은 파일에 저장한다.
+	public void saveFile() {
+		//파일을 대상으로 한 출력스트림은 empty(빈) 파일을 자동으로 생성해버린다.
+		try {
+			//탄생과 동시에 기존의 파일을 제거해버리지만 비어있는 파일에 area의 내용을 얻어와 곧바로 다시 출력해 버리자
+			writer = new FileWriter(file);
+			writer.write(area.getText());
+			writer.close();
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public void actionPerformed(ActionEvent e) {
 		JMenuItem obj=(JMenuItem)e.getSource();
 		
-		//열기눌렀을 때
-		if(obj==item[2]) {
+		
+		if(obj==item[2]) {//열기눌렀을 때
 			openFileByBuffer();
+		}else if(obj==item[3]) {//저장
+			//area에 작성된 내용을 , 열어놓은 파일에 출력
+			saveFile();
+		}else if(obj==item[7]) {//프로그램 종료
+			System.exit(0);//프로세스 종료
 		}
+		
+		//sun에서 강요하는 예외, 강요하지 않는 예외
+		//"열기", "10"
+		int i=0;
+		try {
+			i=Integer.parseInt(obj.getText());//"10"
+			
+		}catch(NumberFormatException e2) {
+			i=20;
+		}
+		setFont(i);
+
 	}
 	
 	public static void main(String[] args) {
